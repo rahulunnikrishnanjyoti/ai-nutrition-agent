@@ -1,9 +1,10 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from pandasai import SmartDataframe
-from pandasai.llm.local_llm import LocalLLM
+from pandasai.llm.fake import FakeLLM
 
 st.set_page_config(page_title="🧠 AI Nutrition Analyzer", layout="wide")
 
@@ -13,8 +14,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("📁 Upload CSV", type=["csv"])
-
-llm = LocalLLM()
 
 def classify_bmi(bmi):
     if bmi < 16:
@@ -99,13 +98,8 @@ if uploaded_file:
 
     with tabs[4]:
         st.subheader("🔍 Ask the Data (AI Agent)")
-        query = st.text_input("💬 Ask any question about the uploaded student data:")
-        if query:
-            with st.spinner("🤖 Thinking..."):
-                try:
-                    sdf = SmartDataframe(df, config={"llm": llm})
-                    response = sdf.chat(query)
-                    st.success("✅ Here's the result:")
-                    st.write(response)
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)}")
+        question = st.text_input("Ask a question about the data")
+        if question:
+            sdf = SmartDataframe(df, config={"llm": FakeLLM()})
+            answer = sdf.chat(question)
+            st.success(answer)
