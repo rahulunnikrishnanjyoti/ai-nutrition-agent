@@ -114,12 +114,14 @@ Now answer the following question based on the dataset:
 
 Question: {user_query}
 """
-                        response = openai.ChatCompletion.create(
-                            model="gpt-3.5-turbo",
-                            messages=[{"role": "user", "content": prompt}]
-                        )
-                        st.success("✅ AI Response:")
-                        st.write(response["choices"][0]["message"]["content"])
+                        from openai import OpenAI
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": prompt}]
+)
+st.write(response.choices[0].message.content)
                     except Exception as e:
                         st.error(f"❌ Error: {e}")
             else:
