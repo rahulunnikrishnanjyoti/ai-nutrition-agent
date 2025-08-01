@@ -3,10 +3,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import openai
+from openai import OpenAI
 
-# Set up OpenAI API
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# Set up OpenAI Client
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(page_title="🧠 AI Nutrition Analyzer", layout="wide")
 
@@ -114,14 +114,12 @@ Now answer the following question based on the dataset:
 
 Question: {user_query}
 """
-                        from openai import OpenAI
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": prompt}]
-)
-st.write(response.choices[0].message.content)
+                        response = client.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        st.success("✅ AI Response:")
+                        st.write(response.choices[0].message.content)
                     except Exception as e:
                         st.error(f"❌ Error: {e}")
             else:
