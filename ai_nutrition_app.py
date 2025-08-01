@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from pandasai import SmartDataframe
+from pandasai.llm.local_llm import LocalLLM
 
 st.set_page_config(page_title="🧠 AI Nutrition Analyzer", layout="wide")
 
@@ -11,6 +13,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("📁 Upload CSV", type=["csv"])
+
+llm = LocalLLM()
 
 def classify_bmi(bmi):
     if bmi < 16:
@@ -56,14 +60,13 @@ if uploaded_file:
     df["muac_category"] = df.apply(lambda row: classify_muac(row["muac"], row["age"]), axis=1)
     df["growth_efficiency"] = df.apply(lambda row: growth_efficiency(row["bmi"], row["muac"]), axis=1)
 
-    tabs = st.tabs(["📌 Summary", "📊 BMI Overview", "🩺 MUAC Trends", "🚨 Risk Flags"])
+    tabs = st.tabs(["📌 Summary", "📊 BMI Overview", "🩺 MUAC Trends", "🚨 Risk Flags", "🔍 Ask the Data (AI Agent)"])
 
     with tabs[0]:
         st.subheader("📌 Summary Stats")
         st.metric("Average BMI", round(df['bmi'].mean(), 2))
         st.metric("Average MUAC", round(df['muac'].mean(), 2))
         st.metric("% Underweight", f"{(df['bmi_category'].isin(['Underweight', 'Severely Underweight']).mean() * 100):.1f}%")
-
         st.dataframe(df.head(20))
 
     with tabs[1]:
@@ -73,7 +76,6 @@ if uploaded_file:
             st.plotly_chart(px.histogram(df, x="bmi", nbins=20, title="BMI Distribution", color_discrete_sequence=['#3D5A80']), use_container_width=True)
         with col2:
             st.plotly_chart(px.pie(df, names="bmi_category", title="BMI Categories", color_discrete_sequence=px.colors.qualitative.Pastel), use_container_width=True)
-
         st.plotly_chart(px.box(df, x="gender", y="bmi", color="gender", title="BMI by Gender", color_discrete_sequence=px.colors.qualitative.Vivid), use_container_width=True)
         st.plotly_chart(px.scatter(df, x="age", y="bmi", color="gender", title="BMI vs Age", size="bmi", hover_data=["student_id"]), use_container_width=True)
 
@@ -84,7 +86,6 @@ if uploaded_file:
             st.plotly_chart(px.pie(df, names="muac_category", title="MUAC Distribution", color_discrete_sequence=px.colors.qualitative.Set3), use_container_width=True)
         with col2:
             st.plotly_chart(px.box(df, x="gender", y="muac", color="muac_category", title="MUAC by Gender", color_discrete_sequence=px.colors.qualitative.Bold), use_container_width=True)
-
         st.plotly_chart(px.line(df.sort_values("age"), x="age", y="muac", title="MUAC vs Age", markers=True), use_container_width=True)
         st.plotly_chart(px.density_heatmap(df, x="age", y="muac", nbinsx=10, nbinsy=10, title="MUAC Heatmap by Age"), use_container_width=True)
 
@@ -93,7 +94,18 @@ if uploaded_file:
         risk_df = df[(df["bmi"] < 16) & (df["muac"] < 16)]
         st.warning(f"⚠️ {len(risk_df)} students flagged as high-risk!")
         st.dataframe(risk_df[["student_id", "age", "gender", "bmi", "muac", "bmi_category", "muac_category"]])
-
         st.plotly_chart(px.scatter(df, x="bmi", y="muac", color="bmi_category", title="BMI vs MUAC Risk Matrix", size="growth_efficiency", hover_name="student_id"), use_container_width=True)
-
         st.plotly_chart(px.histogram(df, x="growth_efficiency", nbins=15, title="Growth Efficiency Score Distribution", color_discrete_sequence=['#EE6C4D']), use_container_width=True)
+
+    with tabs[4]:
+        st.subheader("🔍 Ask the Data (AI Agent)")
+        query = st.text_input("💬 Ask any question about the uploaded student data:")
+        if query:
+            with st.spinner("🤖 Thinking..."):
+                try:
+                    sdf = SmartDataframe(df, config={"llm": llm})
+                    response = sdf.chat(query)
+                    st.success("✅ Here's the result:")
+                    st.write(response)
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
