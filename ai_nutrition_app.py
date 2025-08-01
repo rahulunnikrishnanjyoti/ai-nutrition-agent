@@ -3,8 +3,10 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from pandasai import SmartDataframe
-from pandasai.llm.fake import FakeLLM
+import openai
+
+# Set up OpenAI API
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 st.set_page_config(page_title="🧠 AI Nutrition Analyzer", layout="wide")
 
@@ -98,8 +100,27 @@ if uploaded_file:
 
     with tabs[4]:
         st.subheader("🔍 Ask the Data (AI Agent)")
-        question = st.text_input("Ask a question about the data")
-        if question:
-            sdf = SmartDataframe(df, config={"llm": FakeLLM()})
-            answer = sdf.chat(question)
-            st.success(answer)
+        user_query = st.text_area("Type your question about the data here:", placeholder="e.g., What percentage of girls are underweight?")
+        if st.button("💬 Ask"):
+            if user_query:
+                with st.spinner("Thinking..."):
+                    try:
+                        prompt = f"""
+You are a health data analyst. Here's a preview of the dataset:
+
+{df.head(10).to_markdown(index=False)}
+
+Now answer the following question based on the dataset:
+
+Question: {user_query}
+"""
+                        response = openai.ChatCompletion.create(
+                            model="gpt-3.5-turbo",
+                            messages=[{"role": "user", "content": prompt}]
+                        )
+                        st.success("✅ AI Response:")
+                        st.write(response["choices"][0]["message"]["content"])
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
+            else:
+                st.warning("Please enter a question first.")
